@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import re
+from pathlib import Path
+
+# Regex-based exclusion patterns
+excluded_dirs = [
+    r'^opt$',
+    r'^var$',
+    r'^tmp$',
+    r'__pycache__',
+    r'\.mypy_cache$',
+    r'\.pytest_cache$',
+    r'\.venv$',
+    r'\.git$',
+    r'\.idea$',
+    r'\.vscode$',
+    r'^node_modules$',
+    r'^public$',
+    r'^static$',
+    r'^certs?$',
+    r'^ssl$',
+]
+
+excluded_files = [
+    r'.*\.pyc$',
+    r'.*\.log$',
+    r'^\.DS_Store$',
+    r'.*\.pem$',
+    r'.*\.crt$',
+    r'.*\.key$',
+    r'.*\.csr$',
+    r'.*\.der$',
+    r'.*\.pfx$',
+    r'.*\.p12$',
+    r'^package-lock\.json$',
+]
+
+# Compile exclusion patterns
+excluded_dir_patterns = [re.compile(p) for p in excluded_dirs]
+excluded_file_patterns = [re.compile(p) for p in excluded_files]
+
+def build_regex_from_mask(mask: str) -> re.Pattern:
+    masks = mask.split('|')
+    regex_parts = []
+    for m in masks:
+        m = re.escape(m).replace(r'\*', '.*')
+        regex_parts.append(f"^{m}$")
+    combined_regex = "|".join(regex_parts)
+    return re.compile(combined_regex)
+
+def is_excluded_dir(name: str) -> bool:
+    return any(p.search(name) for p in excluded_dir_patterns)
+
+def is_excluded_file(name: str) -> bool:
+    return any(p.search(name) for p in excluded_file_patterns)
+
+def should_include_file(name: str, include_hidden: bool, pattern: re.Pattern | None, verbose: bool) -> bool:
+    if is_excluded_file(name):
+        if verbose:
+            print(f"[audit] Skipped file: {name}")
+        return False
+    if not include_hidden and name.startswith('.'):
+        return False
+    if pattern and not pattern.match(name):
+        return False
+    return True
+
+def is_binary_file(path: Path) -> bool:
+    try:
+        with open(path, 'rb') as f:
+            chunk = f.read(1024)
+            if b'\x00' in chunk:
+                return True  # Contains null byte → binary
+            chunk.decode('utf-8')
+            return False
+    except Exception:
+        return True  # Fails to read or decode → treat as binary
+
+def audit_directory(base_path: Path, pattern: re.Pattern | None, summary: bool, include_hidden: bool, verbose: bool):
+    for root, dirs, files in os.walk(base_path):
+        # Exclude directories
+        original_dirs = list(dirs)
+        dirs[:] = []
+        for d in original_dirs:
+            if is_excluded_dir(d):
+                if verbose:
+                    print(f"[audit] Skipped directory: {os.path.join(root, d)}")
+                continue
+            dirs.append(d)
+
+        for file in files:
+            if not should_include_file(file, include_hidden, pattern, verbose):
+                continue
+            full_path = Path(root) / file
+
+            if is_binary_file(full_path):
+                if verbose:
+                    print(f"[audit] Skipped binary file: {full_path}")
+                continue
+
+            if summary:
+                print(full_path)
+            else:
+                print(f"--- START {full_path} ---")
+                try:
+                    with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+                        print(f.read(), end="")
+                except Exception as e:
+                    print(f"Could not read {full_path}: {e}")
+                print(f"--- END {full_path} ---\n")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Recursively audit files in a directory tree.",
+        epilog="""
+Examples:
+  bin/audit .                         # Scan current directory
+  bin/audit src/backend               # Scan a specific path
+  bin/audit . --mask="*.py|*.yml"     # Filter with mask
+  bin/audit . --summary               # Only show file paths
+  bin/audit . --hidden                # Include hidden files
+  bin/audit . --verbose               # Show skipped files and dirs
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    parser.add_argument("path", type=str, nargs="?", default=".", help="Directory to scan")
+    parser.add_argument("--mask", type=str, help='Glob-style pattern (e.g. "*.py|*.txt")')
+    parser.add_argument("--summary", action="store_true", help="Only show file paths")
+    parser.add_argument("--hidden", action="store_true", help="Include hidden files")
+    parser.add_argument("--verbose", action="store_true", help="Show skipped files and directories")
+
+    args = parser.parse_args()
+
+    pattern = build_regex_from_mask(args.mask) if args.mask else None
+    path = Path(args.path).resolve()
+
+    if not path.is_dir():
+        print(f"Error: {path} is not a valid directory.")
+        exit(1)
+
+    audit_directory(path, pattern, args.summary, args.hidden, args.verbose)
+
+if __name__ == "__main__":
+    main()

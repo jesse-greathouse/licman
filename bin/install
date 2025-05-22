@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent / "modules"))
+from install import install, parse_options
+
+def main():
+    args = sys.argv[1:]
+    selected, exclusive_mode = parse_options(args)
+    install(selected, exclusive_mode)
+
+if __name__ == "__main__":
+    main()

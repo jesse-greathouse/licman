@@ -1,0 +1,8 @@
+Django==5.2.1
+gunicorn==23.0.0
+python-dotenv>=1.1.0
+PyYAML==6.0.2
+celery==5.5.2
+redis==6.1.0
+supervisor==4.2.5
+psycopg[binary]==3.2.9

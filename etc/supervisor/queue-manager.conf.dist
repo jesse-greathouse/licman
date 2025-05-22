@@ -1,0 +1,26 @@
+[supervisord]
+logfile=%(ENV_LOG_DIR)s/queue-manager.log
+pidfile=%(ENV_VAR)s/pid/queue-manager.pid
+
+[inet_http_server]
+port=127.0.0.1:__QUEUECTL_PORT__
+username=__QUEUECTL_USER__
+password=__QUEUECTL_SECRET__
+
+[supervisorctl]
+serverurl=http://localhost:__QUEUECTL_PORT__
+username=__QUEUECTL_USER__
+password=__QUEUECTL_SECRET__
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+
+[program:celery]
+process_name=%(ENV_APP_NAME)s_worker_%(program_name)s
+directory=%(ENV_SRC)s
+command=opt/venv/bin/celery -A licman worker --loglevel=info
+autostart=true
+autorestart=true
+stdout_logfile=%(ENV_LOG_DIR)s/celery.out.log
+stderr_logfile=%(ENV_LOG_DIR)s/celery.err.log
+environment=DJANGO_SETTINGS_MODULE="licman.settings",CELERY_BROKER_URL="%(ENV_CELERY_BROKER_URL)s",CELERY_WORKER_CONCURRENCY="%(ENV_CELERY_WORKER_CONCURRENCY)s",PYTHONPATH="%(ENV_SRC)s",VIRTUAL_ENV="%(ENV_BASE_DIR)s/opt/venv",PATH="%(ENV_BASE_DIR)s/opt/venv/bin:%(ENV_PATH)s",LANG="en_US.UTF-8",LC_ALL="en_US.UTF-8"

@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+from pathlib import Path
+
+cwd = Path(__file__).resolve().parent
+modules_path = cwd / "modules"
+venv_python = cwd.parent / "opt" / "venv" / "bin" / "python"
+
+# Ensure virtualenv exists
+if not venv_python.exists():
+    sys.stderr.write("❌ Virtual environment not found. Please run bin/install first.\n")
+    sys.exit(1)
+
+# Delegate script (assumed to live in modules/cleancache.py)
+delegate = modules_path / "static.py"
+args = [str(venv_python), str(delegate)] + sys.argv[1:]
+
+try:
+    os.execv(str(venv_python), args)
+except Exception as e:
+    sys.stderr.write(f"❌ Failed to launch cleancache script: {e}\n")
+    sys.exit(1)

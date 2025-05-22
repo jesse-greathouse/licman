@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+from pathlib import Path
+
+APP_ROOT = Path(__file__).resolve().parents[1]
+BIN_DIR = APP_ROOT / "bin"
+MODULES_DIR = BIN_DIR / "modules"
+OPT_DIR = APP_ROOT / "opt"
+VENV_DIR = OPT_DIR / "venv"
+
+if str(BIN_DIR) not in sys.path:
+    sys.path.insert(0, str(BIN_DIR))
+
+# Resolve base directory and module path
+cwd = Path(__file__).resolve().parent
+venv_python = VENV_DIR / "bin" / "python"
+
+# Ensure virtualenv exists
+if not venv_python.exists():
+    sys.stderr.write("❌ Virtual environment not found. Please run bin/install first.\n")
+    sys.exit(1)
+
+# Reconstruct sys.argv for the delegate
+delegate = MODULES_DIR / "configure.py"
+args = [str(venv_python), str(delegate)] + sys.argv[1:]
+
+# Re-execute with venv Python and delegate script
+try:
+    os.execv(str(venv_python), args)
+except Exception as e:
+    sys.stderr.write(f"❌ Failed to launch configure script: {e}\n")
+    sys.exit(1)

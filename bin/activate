@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+VENV_DIR = BASE_DIR / "opt" / "venv"
+VENV_BIN = VENV_DIR / "bin"
+BIN_DIR = BASE_DIR / "bin"
+
+# Set environment variables
+os.environ["VIRTUAL_ENV"] = str(VENV_DIR)
+
+# Modify PATH
+current_path = os.environ.get("PATH", "")
+new_path = f"{VENV_BIN}:{current_path}:{BIN_DIR}"
+os.environ["PATH"] = new_path
+
+# Show debug info
+print("🐍 Virtual environment activated.")
+print(f"→ VIRTUAL_ENV={os.environ['VIRTUAL_ENV']}")
+print(f"→ PATH={os.environ['PATH']}")
+
+# Launch subshell inside venv context
+shell = os.environ.get("SHELL", "/bin/bash")
+subprocess.run([shell], env=os.environ)
