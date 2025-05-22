@@ -6,8 +6,6 @@
 
 *Licman features a modern React + Vite frontend*
 
-*The system is organized into cleanly separated tiers, shown in C4 container format.*
-
 ---
 
 ## System Components
@@ -161,13 +159,15 @@ licman/
 ```bash
 $ git clone https://github.com/jesse-greathouse/licman.git
 $ cd licman
-$ python3 -m venv venv
-$ source venv/bin/activate
 $ bin/install
 ```
-
 This script installs system packages, Python dependencies, Node.js frontend tools, and prepares runtime directories.
 
+> optionally activate the python virtual environment
+
+```bash
+$ bin/activate
+```
 ---
 
 ### Step 2: Configure the Application
@@ -193,24 +193,21 @@ You may rerun this script to update settings at any time.
 To start the backend, queue workers, and web server:
 
 ```bash
-$ bin/web     # Starts Gunicorn under Supervisor
+$ bin/web     # Starts Nginx and Gunicorn under Supervisor
 $ bin/queue   # Starts Celery workers
 ```
 
-To launch the frontend for development:
-
-```bash
-$ cd src/frontend
-$ npm run dev
-```
-
-To build the production frontend:
+To build the frontend (for development only, not necessary for deployment):
 
 ```bash
 $ cd src/frontend
 $ npm run build
 ```
 
+(optionally use the watcher for realtime updates)
+```bash
+$ npm run watch
+```
 ---
 
 ## Contact
