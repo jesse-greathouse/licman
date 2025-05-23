@@ -3,27 +3,25 @@ import os
 import time
 import subprocess
 from pathlib import Path
-from config import get_configuration
 
-# Ensure the `bin` directory is in sys.path to allow `from modules import config`
 APP_ROOT = Path(__file__).resolve().parents[2]
 BIN_DIR = APP_ROOT / "bin"
 if str(BIN_DIR) not in sys.path:
     sys.path.insert(0, str(BIN_DIR))
 
-from modules import config
+from modules import cfg
+
+cnf = cfg.get_configuration()
 
 SUPERVISOR_CONF = APP_ROOT / "etc/supervisor/queue-manager.conf"
 SUPERVISOR_LOG = APP_ROOT / "var/log/queue-manager.log"
 SUPERVISOR_PID = APP_ROOT / "var/pid/queue-manager.pid"
 
-cfg = config.get_configuration()
-
 env = os.environ.copy()
 env.update({
     "APP_NAME": "licman",
     "USER": os.getenv("LOGNAME", "unknown"),
-    "DIR": str(APP_ROOT),
+    "BASE_DIR": str(APP_ROOT),
     "BIN": str(APP_ROOT / "bin"),
     "ETC": str(APP_ROOT / "etc"),
     "OPT": str(APP_ROOT / "opt"),
@@ -32,11 +30,19 @@ env.update({
     "SRC": str(APP_ROOT / "src"),
     "CACHE_DIR": str(APP_ROOT / "var/cache"),
     "LOG_DIR": str(APP_ROOT / "var/log"),
+    "VIRTUAL_ENV": str(APP_ROOT / "opt/venv"),
     "PATH": os.getenv("PATH", "/usr/bin:/bin"),
-    "CELERY_BROKER_URL": cfg["celery"].get("CELERY_BROKER_URL", ""),
-    "CELERY_WORKER_CONCURRENCY": cfg["celery"].get("CELERY_WORKER_CONCURRENCY", "2"),
-    "BASE_DIR": str(APP_ROOT),
+
+    "CELERY_BROKER_URL": cnf["celery"].get("CELERY_BROKER_URL", ""),
+    "CELERY_WORKER_CONCURRENCY": cnf["celery"].get("CELERY_WORKER_CONCURRENCY", "2"),
 })
+
+def is_pid_running(pid):
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, ValueError):
+        return False
 
 def start_queue():
     if SUPERVISOR_PID.exists():
@@ -74,13 +80,6 @@ def kill_queue():
             subprocess.run(["kill", "-TERM", pid])
         else:
             print("Supervisor PID exists but process is not running.")
-
-def is_pid_running(pid):
-    try:
-        os.kill(int(pid), 0)
-        return True
-    except (OSError, ValueError):
-        return False
 
 def print_help():
     print("""

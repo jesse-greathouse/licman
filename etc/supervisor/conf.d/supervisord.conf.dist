@@ -18,7 +18,7 @@ supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
 [program:cleancache]
 process_name=%(ENV_APP_NAME)s_web_%(program_name)s
 environment=PATH="%(ENV_BIN)s:%(ENV_PATH)s"
-directory=%(ENV_DIR)s
+directory=%(ENV_BASE_DIR)s
 command=bin/cleancache
 stdout_events_enabled=true
 stderr_logfile=%(ENV_LOG_DIR)s/cleancache.err.log
@@ -32,7 +32,7 @@ priority=1
 [program:dhp]
 process_name=%(ENV_APP_NAME)s_web_%(program_name)s
 environment=PATH="%(ENV_BIN)s:%(ENV_PATH)s"
-directory=%(ENV_DIR)s
+directory=%(ENV_BASE_DIR)s
 command=bin/dhp
 stdout_events_enabled=true
 stderr_logfile=%(ENV_LOG_DIR)s/dhp.err.log
@@ -46,7 +46,7 @@ priority=2
 [program:static]
 process_name=%(ENV_APP_NAME)s_web_%(program_name)s
 environment=PATH="%(ENV_BIN)s:%(ENV_PATH)s"
-directory=%(ENV_DIR)s
+directory=%(ENV_BASE_DIR)s
 command=bin/static
 stdout_events_enabled=true
 stderr_logfile=%(ENV_LOG_DIR)s/static.err.log
@@ -60,7 +60,7 @@ priority=3
 [program:gunicorn]
 process_name=%(ENV_APP_NAME)s_web_%(program_name)s
 directory=%(ENV_SRC)s
-environment=DJANGO_SETTINGS_MODULE="config.settings",PYTHONPATH="%(ENV_SRC)s/backend",PATH="%(ENV_BIN)s:%(ENV_PATH)s"
+environment=DJANGO_SETTINGS_MODULE="backend.config.settings",PYTHONPATH="%(ENV_SRC)s/backend",PATH="%(ENV_BIN)s:%(ENV_PATH)s"
 command=%(ENV_VIRTUAL_ENV)s/bin/gunicorn config.wsgi:application --bind unix:%(ENV_VAR)s/socket/gunicorn.sock --workers=3 --timeout=30
 stdout_events_enabled=true
 stderr_logfile=%(ENV_LOG_DIR)s/gunicorn.err.log
@@ -71,8 +71,8 @@ priority=4
 
 [program:nginx]
 process_name=%(ENV_APP_NAME)s_web_%(program_name)s
-environment=APP_URL="%(ENV_APP_URL)s",SSL="%(ENV_SSL)s",REDIS_HOST="%(ENV_REDIS_HOST)s",DIR="%(ENV_DIR)s",BIN="%(ENV_BIN)s",ETC="%(ENV_ETC)s",OPT="%(ENV_OPT)s",TMP="%(ENV_TMP)s",VAR="%(ENV_VAR)s",WEB="%(ENV_WEB)s",LOG_DIR="%(ENV_LOG_DIR)s",CACHE_DIR="%(ENV_CACHE_DIR)s",PORT="%(ENV_PORT)s",PATH="%(ENV_BIN)s:%(ENV_OPT)s/openresty/nginx/sbin:%(ENV_PATH)s"
-directory=%(ENV_DIR)s
+environment=APP_URL="%(ENV_APP_URL)s",SSL="%(ENV_SSL)s",REDIS_HOST="%(ENV_REDIS_HOST)s",BASE_DIR="%(ENV_BASE_DIR)s",BIN="%(ENV_BIN)s",ETC="%(ENV_ETC)s",OPT="%(ENV_OPT)s",TMP="%(ENV_TMP)s",VAR="%(ENV_VAR)s",WEB="%(ENV_WEB)s",LOG_DIR="%(ENV_LOG_DIR)s",CACHE_DIR="%(ENV_CACHE_DIR)s",PORT="%(ENV_PORT)s",PATH="%(ENV_BIN)s:%(ENV_OPT)s/openresty/nginx/sbin:%(ENV_PATH)s"
+directory=%(ENV_BASE_DIR)s
 command=authbind --deep nginx -p %(ENV_OPT)s/openresty/nginx -c %(ENV_ETC)s/nginx/nginx.conf
 stdout_events_enabled=true
 stderr_logfile=%(ENV_LOG_DIR)s/nginx.err.log

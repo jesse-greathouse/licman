@@ -1,29 +1,30 @@
-import os
 import sys
 from pathlib import Path
-
-# Ensure `src/` is in sys.path so `backend.config.settings` is importable
-APP_ROOT = Path(__file__).resolve().parents[2]
-SRC_DIR = APP_ROOT / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-# Set Django settings module
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.config.settings")
-
-import django
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+import django
 
-from modules import config
+# Determine project root (assumes this file is in bin/modules/ under the project root)
+APP_ROOT = Path(__file__).resolve().parents[2]
+BIN_DIR = APP_ROOT / "bin"
+MODULES_DIR = BIN_DIR / "modules"
+
+if str(BIN_DIR) not in sys.path:
+    sys.path.insert(0, str(BIN_DIR))
+
+from modules import cfg
 
 def main(update: bool = False):
     django.setup()
 
-    cfg = config.get_configuration()["django"]
-    username = cfg["ADMIN_USERNAME"]
-    email = cfg["ADMIN_EMAIL"]
-    password = cfg["ADMIN_PASSWORD"]
+    cnf = cfg.get_configuration().get("django", {})
+    username = cnf.get("ADMIN_USERNAME")
+    email = cnf.get("ADMIN_EMAIL")
+    password = cnf.get("ADMIN_PASSWORD")
+
+    if not username or not email or not password:
+        sys.stderr.write("❌ Missing ADMIN_USERNAME, ADMIN_EMAIL, or ADMIN_PASSWORD in configuration.\n")
+        sys.exit(1)
 
     User = get_user_model()
 
@@ -42,3 +43,7 @@ def main(update: bool = False):
             print(f"✅ Created new superuser: {username}")
         except IntegrityError as e:
             print(f"❌ Failed to create superuser: {e}")
+
+if __name__ == "__main__":
+    update_flag = "--update" in sys.argv
+    main(update=update_flag)

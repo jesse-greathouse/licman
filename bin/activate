@@ -4,10 +4,10 @@ import os
 import subprocess
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-VENV_DIR = BASE_DIR / "opt" / "venv"
+APP_ROOT = Path(__file__).resolve().parents[1]
+VENV_DIR = APP_ROOT / "opt" / "venv"
 VENV_BIN = VENV_DIR / "bin"
-BIN_DIR = BASE_DIR / "bin"
+BIN_DIR = APP_ROOT / "bin"
 
 # Set environment variables
 os.environ["VIRTUAL_ENV"] = str(VENV_DIR)

@@ -11,13 +11,13 @@ OPT_DIR = APP_ROOT / "opt"
 SRC_DIR = APP_ROOT / "src"
 VENV_DIR = OPT_DIR / "venv"
 VENV_PYTHON = VENV_DIR / "bin" / "python"
-ADMINUSER_SCRIPT = MODULES_DIR / "adminuser.py"
+SEED_SCRIPT = MODULES_DIR / "seed.py"
 
 if not VENV_PYTHON.exists():
     sys.stderr.write("❌ Virtual environment not found. Please run bin/install first.\n")
     sys.exit(1)
 
-args = [str(VENV_PYTHON), str(ADMINUSER_SCRIPT)] + sys.argv[1:]
+args = [str(VENV_PYTHON), str(SEED_SCRIPT)] + sys.argv[1:]
 
 env = os.environ.copy()
 env.update({
@@ -30,5 +30,5 @@ env.update({
 try:
     os.execve(str(VENV_PYTHON), args, env)
 except Exception as e:
-    sys.stderr.write(f"❌ Failed to launch adminuser script: {e}\n")
+    sys.stderr.write(f"❌ Failed to launch seed script: {e}\n")
     sys.exit(1)

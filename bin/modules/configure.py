@@ -12,7 +12,7 @@ MODULES_DIR = BIN_DIR / "modules"
 if str(BIN_DIR) not in sys.path:
     sys.path.insert(0, str(BIN_DIR))
 
-from modules import config
+from modules import cfg
 from modules import utility
 
 # Base paths
@@ -73,46 +73,46 @@ DEFAULTS = {
 def configure(interactive: bool = True):
     utility.splash()
 
-    cfg = config.get_configuration()
+    cnf = cfg.get_configuration()
 
     if interactive:
         print("\n=== Interactive Configuration ===\n")
-        cfg = interactive_prompt(cfg)
+        cnf = interactive_prompt(cnf)
     else:
         print("\n=== Non-Interactive Configuration ===\nUsing defaults or pre-existing values.")
 
-    merged = merge_defaults(cfg)
+    merged = merge_defaults(cnf)
     merged = assign_dynamic_config(merged)
-    config.save_configuration(merged)
+    cfg.save_configuration(merged)
 
     print("Writing .env file...")
-    config.write_env_file(ENV_FILE, merged["django"])
+    cfg.write_env_file(ENV_FILE, merged["django"])
 
     print("🛠️ Writing config files...")
     for _, (src, dst) in CONFIG_FILES.items():
         if src.exists():
-            config.write_template_file(src, dst, **flatten_config(merged))
+            cfg.write_template_file(src, dst, **flatten_config(merged))
 
     print("✅ Configuration complete.")
 
     if interactive:
         post_configuration_options()
 
-def merge_defaults(cfg: dict) -> dict:
+def merge_defaults(cnf: dict) -> dict:
     for domain in DEFAULTS:
-        cfg.setdefault(domain, {})
+        cnf.setdefault(domain, {})
         for key, value in DEFAULTS[domain].items():
-            cfg[domain].setdefault(key, value)
-    return cfg
+            cnf[domain].setdefault(key, value)
+    return cnf
 
-def flatten_config(cfg: dict) -> dict:
+def flatten_config(cnf: dict) -> dict:
     flat = {}
-    for section in cfg.values():
+    for section in cnf.values():
         flat.update(section)
     return flat
 
-def interactive_prompt(cfg: dict) -> dict:
-    cfg.setdefault("django", {})
+def interactive_prompt(cnf: dict) -> dict:
+    cnf.setdefault("django", {})
 
     prompts = [
         ("DJANGO_SECRET_KEY", "Secret Key", utility.generate_rand_str(50)),
@@ -132,7 +132,7 @@ def interactive_prompt(cfg: dict) -> dict:
     ]
 
     for key, label, default in prompts:
-        existing = cfg["django"].get(key)
+        existing = cnf["django"].get(key)
         is_password = key == "ADMIN_PASSWORD"
 
         # Show ***** for ADMIN_PASSWORD default, actual value used behind the scenes
@@ -154,13 +154,13 @@ def interactive_prompt(cfg: dict) -> dict:
                 print(f"❌ {label} is required.")
                 sys.exit(1)
 
-        cfg["django"][key] = value
+        cnf["django"][key] = value
 
-    cfg["django"]["STATIC_ROOT"] = str(VAR_DIR / "static")
-    cfg["django"]["MEDIA_ROOT"] = str(VAR_DIR / "media")
-    cfg["django"]["LOG_DIR"] = str(LOG_DIR)
+    cnf["django"]["STATIC_ROOT"] = str(VAR_DIR / "static")
+    cnf["django"]["MEDIA_ROOT"] = str(VAR_DIR / "media")
+    cnf["django"]["LOG_DIR"] = str(LOG_DIR)
 
-    return cfg
+    return cnf
 
 def run_script(script_path: Path, *args):
     """
@@ -178,9 +178,6 @@ def run_script(script_path: Path, *args):
         sys.exit(result.returncode)
 
 def post_configuration_options():
-    """
-    Presents optional post-configuration actions such as running database migrations.
-    """
     print("\n" + "=" * 66)
     print(" Database Migrations")
     print("=" * 66)
@@ -205,69 +202,81 @@ The credentials provided during configuration will be used.
 You can also run this manually later using: bin/adminuser
 """)
 
-    choice = input("Create superuser now? (y or n) [default y] ").strip().lower()
-    if choice in ("", "y", "yes"):
-        run_script(BIN_DIR / "adminuser")
-        return
-
-    choice = input("Update superuser instead? (y or n) [default n] ").strip().lower()
+    choice = input("Create superuser now? (y or n) [default n] ").strip().lower()
     if choice in ("y", "yes"):
-        run_script(BIN_DIR / "adminuser", "--update")
+        run_script(BIN_DIR / "adminuser")
+    else:
+        choice = input("Update superuser instead? (y or n) [default n] ").strip().lower()
+        if choice in ("y", "yes"):
+            run_script(BIN_DIR / "adminuser", "--update")
 
-def assign_dynamic_config(cfg: dict) -> dict:
+    print("\n" + "=" * 66)
+    print(" Seed Data")
+    print("=" * 66)
+    print("""
+You can optionally seed the database with default records, such as system groups
+and permissions. This is safe to re-run multiple times.
+
+You can also run this manually later using: bin/seed
+""")
+    response = input("Run seed script now? (y or n) [default y] ").strip().lower()
+    if response in ("", "y", "yes"):
+        run_script(BIN_DIR / "seed")
+
+def assign_dynamic_config(cnf: dict) -> dict:
     import os
 
-    cfg["nginx"] = cfg.get("nginx", {})
-    cfg["django"] = cfg.get("django", {})
-    cfg["supervisord"] = cfg.get("supervisord", {})
-    cfg["queue_manager"] = cfg.get("queue_manager", {})
-    cfg["openssl"] = cfg.get("openssl", {})
-    cfg["ssl_params"] = cfg.get("ssl_params", {})
-    cfg["force_ssl"] = cfg.get("force_ssl", {})
-    cfg["redis"] = cfg.get("redis", {})
+    cnf["nginx"] = cnf.get("nginx", {})
+    cnf["django"] = cnf.get("django", {})
+    cnf["supervisord"] = cnf.get("supervisord", {})
+    cnf["queue_manager"] = cnf.get("queue_manager", {})
+    cnf["openssl"] = cnf.get("openssl", {})
+    cnf["ssl_params"] = cnf.get("ssl_params", {})
+    cnf["force_ssl"] = cnf.get("force_ssl", {})
+    cnf["redis"] = cnf.get("redis", {})
 
-    session_secret = cfg["nginx"].get("SESSION_SECRET") or utility.generate_rand_str(64)
-    cfg["nginx"]["SESSION_SECRET"] = session_secret
+    session_secret = cnf["nginx"].get("SESSION_SECRET") or utility.generate_rand_str(64)
+    cnf["nginx"]["SESSION_SECRET"] = session_secret
 
     current_user = os.getenv("LOGNAME") or getpass.getuser()
 
-    is_ssl = cfg["nginx"].get("IS_SSL", "false") == "true"
+    is_ssl = cnf["nginx"].get("IS_SSL", "false") == "true"
     if is_ssl:
-        cfg["nginx"]["SSL"] = "ssl http2"
-        cfg["nginx"]["PORT"] = "443"
-        cfg["nginx"]["SSL_CERT_LINE"] = f"ssl_certificate {cfg['nginx'].get('SSL_CERT', ETC_DIR / 'ssl/certs/licman.cert')}"
-        cfg["nginx"]["SSL_KEY_LINE"] = f"ssl_certificate_key {cfg['nginx'].get('SSL_KEY', ETC_DIR / 'ssl/private/licman.key')}"
-        cfg["nginx"]["INCLUDE_FORCE_SSL_LINE"] = f"include {ETC_DIR}/nginx/force-ssl.conf"
+        cnf["nginx"]["SSL"] = "ssl http2"
+        cnf["nginx"]["PORT"] = "443"
+        cnf["nginx"]["SSL_CERT_LINE"] = f"ssl_certificate {cnf['nginx'].get('SSL_CERT', ETC_DIR / 'ssl/certs/licman.cert')}"
+        cnf["nginx"]["SSL_KEY_LINE"] = f"ssl_certificate_key {cnf['nginx'].get('SSL_KEY', ETC_DIR / 'ssl/private/licman.key')}"
+        cnf["nginx"]["INCLUDE_FORCE_SSL_LINE"] = f"include {ETC_DIR}/nginx/force-ssl.conf"
     else:
-        cfg["nginx"]["SSL"] = ""
-        cfg["nginx"]["SSL_CERT_LINE"] = ""
-        cfg["nginx"]["SSL_KEY_LINE"] = ""
-        cfg["nginx"]["INCLUDE_FORCE_SSL_LINE"] = ""
+        cnf["nginx"]["SSL"] = ""
+        cnf["nginx"]["SSL_CERT_LINE"] = ""
+        cnf["nginx"]["SSL_KEY_LINE"] = ""
+        cnf["nginx"]["INCLUDE_FORCE_SSL_LINE"] = ""
 
-    redis_host = cfg["redis"].get("REDIS_HOST", "/var/run/redis/redis.sock")
-    redis_port = cfg["redis"].get("REDIS_PORT", "6379")
-    redis_db = cfg["redis"].get("REDIS_DB", "0")
+    redis_host = cnf["redis"].get("REDIS_HOST", "/var/run/redis/redis.sock")
+    redis_port = cnf["redis"].get("REDIS_PORT", "6379")
+    redis_db = cnf["redis"].get("REDIS_DB", "0")
 
     if redis_host.startswith("/"):
         broker_url = f"redis+socket://{redis_host}?virtual_host={redis_db}"
     else:
         broker_url = f"redis://{redis_host}:{redis_port}/{redis_db}"
 
-    cfg["celery"]["CELERY_BROKER_URL"] = broker_url
+    cnf["celery"]["CELERY_BROKER_URL"] = broker_url
 
-    allowed_hosts = cfg["django"].get("ALLOWED_HOSTS", "localhost,127.0.0.1")
+    allowed_hosts = cnf["django"].get("ALLOWED_HOSTS", "localhost,127.0.0.1")
     parsed_hosts = [d.strip() for d in allowed_hosts.replace(",", " ").split()]
 
-    port = cfg["nginx"].get("PORT", "8282")
+    port = cnf["nginx"].get("PORT", "8282")
     is_default_port = port in ("80", "443")
 
-    cfg["nginx"]["DOMAINS"] = " ".join(parsed_hosts)
+    cnf["nginx"]["DOMAINS"] = " ".join(parsed_hosts)
     csrf_origins = [f"http://{h}:{port}" if not is_default_port else f"http://{h}" for h in parsed_hosts] + \
         [f"https://{h}:{port}" if not is_default_port else f"https://{h}" for h in parsed_hosts]
-    cfg["django"]["CSRF_TRUSTED_ORIGINS"] = ",".join(csrf_origins)
+    cnf["django"]["CSRF_TRUSTED_ORIGINS"] = ",".join(csrf_origins)
 
-    cfg["nginx"].update({
-        "APP_URL": cfg["django"].get("APP_URL", f"http://{parsed_hosts[0]}:{port}"),
+    cnf["nginx"].update({
+        "APP_URL": cnf["django"].get("APP_URL", f"http://{parsed_hosts[0]}:{port}"),
         "DIR": str(APP_ROOT),
         "BIN": str(BIN_DIR),
         "ETC": str(ETC_DIR),
@@ -281,26 +290,26 @@ def assign_dynamic_config(cfg: dict) -> dict:
         "PORT": port,
     })
 
-    cfg["ssl_params"]["ETC"] = str(ETC_DIR)
-    cfg["openssl"]["ETC"] = str(ETC_DIR)
-    cfg["force_ssl"]["DOMAINS"] = cfg["nginx"]["DOMAINS"]
+    cnf["ssl_params"]["ETC"] = str(ETC_DIR)
+    cnf["openssl"]["ETC"] = str(ETC_DIR)
+    cnf["force_ssl"]["DOMAINS"] = cnf["nginx"]["DOMAINS"]
 
-    supervisor_secret = cfg["supervisord"].get("SUPERVISORCTL_SECRET") or utility.generate_rand_str(32)
-    queue_secret = cfg["queue_manager"].get("QUEUECTL_SECRET") or utility.generate_rand_str(32)
+    supervisor_secret = cnf["supervisord"].get("SUPERVISORCTL_SECRET") or utility.generate_rand_str(32)
+    queue_secret = cnf["queue_manager"].get("QUEUECTL_SECRET") or utility.generate_rand_str(32)
 
-    cfg["supervisord"].update({
+    cnf["supervisord"].update({
         "SUPERVISORCTL_USER": current_user,
         "SUPERVISORCTL_SECRET": supervisor_secret,
-        "SUPERVISORCTL_PORT": cfg["supervisord"].get("SUPERVISORCTL_PORT", 5959),
+        "SUPERVISORCTL_PORT": cnf["supervisord"].get("SUPERVISORCTL_PORT", 5959),
     })
 
-    cfg["queue_manager"].update({
+    cnf["queue_manager"].update({
         "QUEUECTL_USER": current_user,
         "QUEUECTL_SECRET": queue_secret,
-        "QUEUECTL_PORT": cfg["queue_manager"].get("QUEUECTL_PORT", 5960),
+        "QUEUECTL_PORT": cnf["queue_manager"].get("QUEUECTL_PORT", 5960),
     })
 
-    cfg["django"].update({
+    cnf["django"].update({
         "APP_NAME": "licman",
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "BASE_DIR": str(APP_ROOT),
@@ -309,11 +318,11 @@ def assign_dynamic_config(cfg: dict) -> dict:
         "REDIS_HOST": redis_host,
         "REDIS_PORT": redis_port,
         "REDIS_DB": redis_db,
-        "REDIS_PASSWORD": cfg["redis"].get("REDIS_PASSWORD", ""),
+        "REDIS_PASSWORD": cnf["redis"].get("REDIS_PASSWORD", ""),
         "CELERY_BROKER_URL": broker_url,
     })
 
-    return cfg
+    return cnf
 
 if __name__ == "__main__":
     import argparse

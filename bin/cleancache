@@ -4,21 +4,30 @@ import sys
 import os
 from pathlib import Path
 
-cwd = Path(__file__).resolve().parent
-modules_path = cwd / "modules"
-venv_python = cwd.parent / "opt" / "venv" / "bin" / "python"
+APP_ROOT = Path(__file__).resolve().parents[1]
+BIN_DIR = APP_ROOT / "bin"
+MODULES_DIR = BIN_DIR / "modules"
+OPT_DIR = APP_ROOT / "opt"
+SRC_DIR = APP_ROOT / "src"
+VENV_DIR = OPT_DIR / "venv"
+VENV_PYTHON = VENV_DIR / "bin" / "python"
+CLEANCACHE_SCRIPT = MODULES_DIR / "cleancache.py"
 
-# Ensure virtualenv exists
-if not venv_python.exists():
+if not VENV_PYTHON.exists():
     sys.stderr.write("❌ Virtual environment not found. Please run bin/install first.\n")
     sys.exit(1)
 
-# Delegate script (assumed to live in modules/cleancache.py)
-delegate = modules_path / "cleancache.py"
-args = [str(venv_python), str(delegate)] + sys.argv[1:]
+args = [str(VENV_PYTHON), str(CLEANCACHE_SCRIPT)] + sys.argv[1:]
+
+env = os.environ.copy()
+env.update({
+    "PYTHONPATH": str(SRC_DIR),
+    "VIRTUAL_ENV": str(VENV_DIR),
+    "BASE_DIR": str(APP_ROOT),
+})
 
 try:
-    os.execv(str(venv_python), args)
+    os.execve(str(VENV_PYTHON), args, env)
 except Exception as e:
     sys.stderr.write(f"❌ Failed to launch cleancache script: {e}\n")
     sys.exit(1)

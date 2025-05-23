@@ -2,13 +2,11 @@ import shutil
 import os
 from pathlib import Path
 
-def main():
-    # Get absolute path to src/backend relative to this script's directory
-    base_dir = Path(__file__).resolve().parents[1]
-    backend_dir = base_dir / "src" / "backend"
+APP_ROOT = Path(__file__).resolve().parents[2]
+SRC_DIR = APP_ROOT / "src" / "backend"
 
-    # Walk and remove all __pycache__ directories
-    for root, dirs, _ in os.walk(backend_dir):
+def main():
+    for root, dirs, _ in os.walk(SRC_DIR):
         for d in dirs:
             if d == "__pycache__":
                 target = Path(root) / d

@@ -4,14 +4,31 @@ import sys
 import os
 from pathlib import Path
 
-BIN_DIR = Path(__file__).resolve().parent
+APP_ROOT = Path(__file__).resolve().parents[1]
+BIN_DIR = APP_ROOT / "bin"
 MODULES_DIR = BIN_DIR / "modules"
-VENV_PYTHON = BIN_DIR.parent / "opt" / "venv" / "bin" / "python"
-QUEUE_SCRIPT = MODULES_DIR / "queue.py"
+OPT_DIR = APP_ROOT / "opt"
+SRC_DIR = APP_ROOT / "src"
+VENV_DIR = OPT_DIR / "venv"
+VENV_PYTHON = VENV_DIR / "bin" / "python"
+QUEUE_SCRIPT = MODULES_DIR / "queue_manager.py"
 
 if not VENV_PYTHON.exists():
     sys.stderr.write("❌ Virtual environment not found. Please run bin/install first.\n")
     sys.exit(1)
 
 args = [str(VENV_PYTHON), str(QUEUE_SCRIPT)] + sys.argv[1:]
-os.execv(str(VENV_PYTHON), args)
+
+env = os.environ.copy()
+env.update({
+    "DJANGO_SETTINGS_MODULE": "backend.config.settings",
+    "PYTHONPATH": str(SRC_DIR),
+    "VIRTUAL_ENV": str(VENV_DIR),
+    "BASE_DIR": str(APP_ROOT),
+})
+
+try:
+    os.execve(str(VENV_PYTHON), args, env)
+except Exception as e:
+    sys.stderr.write(f"❌ Failed to launch queue script: {e}\n")
+    sys.exit(1)
