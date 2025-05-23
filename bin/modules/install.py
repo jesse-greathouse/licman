@@ -5,14 +5,18 @@ import tarfile
 from pathlib import Path
 
 PYTHON_VERSION = "3.13.3"
+OPENRESTY_VERSION = "1.27.1.2"
+OPENSSL_VERSION = "3.5.0"
 NODE_VERSION = "22.14"
 NPM_VERSION = "11.2.0"
+
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 OPT_DIR = BASE_DIR / "opt"
 SRC_DIR = BASE_DIR / "src"
 PYTHON_TARBALL = OPT_DIR / f"Python-{PYTHON_VERSION}.tgz"
-OPENRESTY_TARBALL = next((f for f in OPT_DIR.glob("openresty-*.tar.gz") if f.is_file()), None)
+OPENRESTY_TARBALL = OPT_DIR / f"openresty-{OPENRESTY_VERSION}.tar.gz"
+OPENSSL_TARBALL = OPT_DIR / f"openssl-{OPENSSL_VERSION}.tar.gz"
 
 def run(cmd, cwd=None, shell=False):
     print(f"→ {' '.join(cmd) if isinstance(cmd, list) else cmd}")
@@ -156,8 +160,9 @@ def install_openresty(force=False):
     print("Building OpenResty...")
     run(["tar", "-xzf", str(OPENRESTY_TARBALL), "-C", str(OPT_DIR)])
 
-    candidates = [d for d in OPT_DIR.glob("openresty-*") if d.is_dir() and not str(d).endswith(".tar.gz")]
-    source_dir = next((d for d in candidates if (d / "configure").exists()), None)
+    source_dir = OPT_DIR / f"openresty-{OPENRESTY_VERSION}"
+    if not source_dir.exists() or not (source_dir / "configure").exists():
+        raise FileNotFoundError("❌ Could not find extracted OpenResty source directory.")
 
     if not source_dir:
         raise FileNotFoundError("❌ Could not find extracted OpenResty source directory.")
@@ -175,9 +180,40 @@ def install_openresty(force=False):
     run(["make", "-j4"], cwd=source_dir)
     run(["make", "install"], cwd=source_dir)
 
+def install_openssl(force=False):
+    install_dir = OPT_DIR / "openssl"
+
+    if install_dir.exists() and not force:
+        print("✅ OpenSSL already installed.")
+        return
+
+    if force and install_dir.exists():
+        print(f"🗑️ Removing existing OpenSSL install at {install_dir}")
+        run(["rm", "-rf", str(install_dir)])
+
+    if not OPENSSL_TARBALL.exists():
+        raise FileNotFoundError(f"❌ OpenSSL tarball not found at {OPENSSL_TARBALL}")
+
+    print("Extracting OpenSSL tarball...")
+    run(["tar", "-xzf", str(OPENSSL_TARBALL), "-C", str(OPT_DIR)])
+
+    source_dir = OPT_DIR / f"openssl-{OPENSSL_VERSION}"
+    if not source_dir.exists() or not (source_dir / "Configure").exists():
+        raise FileNotFoundError("❌ Could not find extracted OpenSSL source directory.")
+
+    print("Configuring OpenSSL build...")
+    run(["./Configure", f"--prefix={install_dir}", "enable-ec_nistp_64_gcc_128", "no-shared"],
+        cwd=source_dir)
+
+    print("Building OpenSSL...")
+    run(["make", "-j4"], cwd=source_dir)
+
+    print("Installing OpenSSL...")
+    run(["make", "install_sw"], cwd=source_dir)
+
 def cleanup():
     print("🧹 Cleaning build directories...")
-    for pattern in ["Python-*", "openresty-*"]:
+    for pattern in ["Python-*", "openresty-*", "openssl-*"]:
         for path in OPT_DIR.glob(pattern):
             if path.is_dir():
                 run(["rm", "-rf", str(path)])
@@ -205,6 +241,7 @@ def install(selected: dict, exclusive_mode: bool):
         "python": 		lambda: install_python(force=exclusive_mode),
         "node": 		lambda: install_node(force=exclusive_mode),
         "openresty": 	lambda: install_openresty(force=exclusive_mode),
+        "openssl": 		lambda: install_openssl(force=exclusive_mode),
         "build": 		build_frontend,
         "cleanup": 		cleanup,
     }
