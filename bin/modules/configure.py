@@ -283,7 +283,7 @@ def assign_dynamic_config(cnf: dict) -> dict:
         "OPT": str(OPT_DIR),
         "TMP": str(TMP_DIR),
         "VAR": str(VAR_DIR),
-        "WEB": str(SRC_DIR / "frontend/public"),
+        "WEB": str(VAR_DIR / "www/html"),
         "SRC": str(SRC_DIR),
         "USER": current_user,
         "LOG": str(LOG_DIR / "error.log"),
