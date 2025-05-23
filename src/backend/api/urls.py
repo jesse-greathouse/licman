@@ -1,6 +1,8 @@
-from django.urls import path
-from . import views  # Import your API views here
+from django.urls import path, include
+from .views import PingAPIView
+from .routers import router
 
 urlpatterns = [
-    path("ping/", views.ping, name="api-ping"),
+    path('', include(router.urls)),
+    path('ping/', PingAPIView.as_view(), name='api-ping'),
 ]

@@ -27,8 +27,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Third party packages
+    'rest_framework',
+
     # Project-local app
-    'backend',  # <--- This line declares 'backend' as an app within INSTALLED_APPS
+    'backend.apps.BackendConfig',  # ✅ AppConfig class preferred
 ]
 
 MIDDLEWARE = [
@@ -42,6 +45,23 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'backend.config.urls'
+
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+}
 
 TEMPLATES = [
     {
